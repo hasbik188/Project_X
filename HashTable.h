@@ -29,9 +29,13 @@ public:
     int hf2(int hash1,int trial,const int tableSize);
     void add(const Person& person);
     void remove(const Person& person);
+    void deleteRecursive(int index);
     void search(const Person& person);
     void print();
     void helpDel(int hash);
+    int MODINC(int bits, int index) {
+        return ((index + 1)%tableSize) & ((1 << bits) - 1);
+    }
     void solution(int hash, Entry newEntry,const Person& person, int n);
     void replace(int i);
     ~HashTable() {
@@ -176,78 +180,56 @@ void HashTable::add(const Person&person) {
     }
 }
 
-//
-//void HashTable::helpDel(int hash){
-//    int last = hash;
-//    int k = hash;
-//    int i = 0;
-//
-//
-//    for (int i = hash; i < tableSize;i++){
-//        k = k + 1;
-//        if (table[i].front().key != table[hash].front().key && i < tableSize){
-//            table[hash].front() = table[i-1].front();
-//            table[i-1].clear();
-//            swap(table[i-1],table[i]);
-////            while (i < tableSize){
-////                table[i-1] = table[i];
-////                i = i + 1;
-////            }
-//            return;
-//        }
-////        if (i == tableSize && table[i].front().key == table[hash].front().key)
-////        {
-////            hash = 0;
-////
-////            goto flag;
-////        }
-//
-//    }
-//
-//
-//
-//
-//
-//
-//    if (k >= tableSize) {
-//        table[last].clear();
-//        //return;
-//    }
-//}
+void HashTable::deleteRecursive(int index) {
+    int trial = 1;
+    int j = hf2(index,trial,tableSize);
+    while (!table[j].empty() && table[j].front().key != table[index].front().key) {
+        trial++;
+        j = hf2(index, trial++,tableSize);
 
-void HashTable::helpDel(int hash) {
-    int counter = 1;
-    int tempIndex = 0;
-    bool found = false;
+    }
 
-    do {
-        int index = hf2(hash, counter, tableSize);
-        if (!table[index].empty() && table[index].front().status != 0) {
-            if (table[index].front().key != table[hash].front().key) {
-                tempIndex = index - 1;
-                if (tempIndex < 0)
-                    tempIndex = tempIndex + tableSize;
-                found = true;
-            }
-        }
-        counter++;
-    } while (counter <= tableSize && !found && table[hash].front().status != 0);
-
-    table[hash] = table[tempIndex];
-    table[tempIndex].clear();
-
-    int trial = 0;
-    int i = 0;
-    while (i < tableSize) {
-        int suphash = hf2(table[i].front().key, trial, tableSize);
-        if (table[i].front().key != i && table[suphash].empty()) {
-            table[suphash] = table[i];
-            table[i].clear();
-        }
-        i++;
+    if (table[j].empty()) {
+        table[index].clear();
+    } else {
+        table[index] = table[j];
+        deleteRecursive(j);
     }
 }
 
+void HashTable::helpDel(int index) {
+    int start = index;
+    table[start].clear();
+    int nextIndex = MODINC(tableSize, start);
+    int replace;
+    while (nextIndex != start) {
+        bool flag2 = true;
+        if (table[nextIndex].front().key != nextIndex) {
+            int trial = 0;
+            int h = table[nextIndex].front().key;
+            while (true) {
+                replace = hf2(h, trial, tableSize);
+                if (replace == nextIndex) { // Добавленное условие: если replace равен nextIndex
+                    flag2 = false;
+                    break;
+                }
+                if (flag2) {
+                    if (table[replace].empty()) {
+                        auto temp = table[replace];
+                        table[replace] = table[nextIndex];
+                        table[nextIndex] = temp;
+                        break;
+                    } else {
+                        trial++;
+                    }
+                }
+            }
+        }
+        nextIndex = MODINC(tableSize, nextIndex);
+    }
+    return;
+}
+//
 void HashTable::remove(const Person&person) {
     int hash = hf1(person);
     Entry& entry = table[hash].front();
@@ -263,9 +245,9 @@ void HashTable::remove(const Person&person) {
         } else if (entry.status == 0 || entry.value != inputline || table[hash].empty()) {
             bool found = false;
             solution(hash, entry, person, 2);
-            if (found == false) {
-                std::cout << "Запись не найдена" << std::endl;
-            }
+//            if (found == false) {
+//                std::cout << "Запись не найдена" << std::endl;
+//            }
         }
     }
     if (isEmpty()== true){
@@ -282,7 +264,7 @@ void HashTable::search(const Person&person) {
                        + "." + std::to_string(person.getDB().year) + " " + person.getADRESS().address;
 
     while (!table[rehash].empty() && trial < tableSize) {
-        Entry& entry = table[hash].front();
+        Entry& entry = table[rehash].front();
 //        if (!table[hash].empty() && table[hash].front().status == 1) {
         if (entry.key == hash && entry.value == line && table[rehash].front().status == 1) {
             std::cout << "Найдено: " << entry.value << std::endl;
